@@ -1,0 +1,19 @@
+---
+- name: Gerenciar containers Docker com Ansible
+  hosts: localhost
+  become: true
+
+  tasks:
+    - name: Verificar se o Docker está instalado
+      ansible.builtin.command:
+        cmd: docker --version
+      register: docker_version
+      changed_when: false
+
+    - name: Iniciar um container Docker
+      community.docker.docker_container:
+        name: meu_container
+        image: nginx
+        state: started
+        ports:
+          - "80:80"
