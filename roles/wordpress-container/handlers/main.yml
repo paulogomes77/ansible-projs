@@ -1,0 +1,13 @@
+---
+# handlers file for wordpress-container
+
+# - name: Restart apache2
+#   ansible.builtin.systemd:
+#     name: apache2
+#     state: restarted
+
+#
+- name: Restart apache2
+  ansible.builtin.command:
+    cmd: service apache2 restart
+  register: apache_status

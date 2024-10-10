@@ -1,0 +1,10 @@
+- hosts: all
+#  vars_files:
+#    - roles/wordpress-container/vars/main.yml
+  become: yes
+  vars_files:
+    - vars/main.yml
+
+  roles:
+    - role: wordpress-container
+    - role: geerlingguy.mysql

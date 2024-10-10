@@ -1,0 +1,128 @@
+---
+
+# Debug
+#- name: List handlers
+#  debug:
+#    msg: "{{ ansible_playbook_handlers }}"
+#  tags: debug_handler
+
+# tasks file for wordpress-container
+- name: Install Packages for wordpress
+  ansible.builtin.apt:
+    name:
+      - apache2
+      - php
+      - php-pear
+      - php-cgi
+      - php-common
+      - php-curl
+      - php-mbstring
+      - php-gd
+      - php-mysqlnd
+      - php-bcmath
+      - php-json
+      - php-xml
+      - php-intl
+      - php-zip
+      - php-imap
+      - php-imagick
+    update_cache: yes
+
+### Este codigo é para linux que usam systemd:
+#- name: Enable service httpd and ensure it is not masked
+#  ansible.builtin.systemd:
+#    name: apache2
+#    enabled: true
+#    masked: no
+#    state: started
+
+# Ativer o módulo , sem isto dava este erro: AH00526: Syntax error on line 173 of /etc/apache2/apache2.conf:
+#Invalid command 'RequestHeader', perhaps misspelled or defined by a module not included in the server configuration
+- name: Ativar o módulo headers
+  ansible.builtin.command:
+    cmd: a2enmod headers
+  notify:
+    - Restart apache2
+
+- name: Iniciar o serviço apache2
+  ansible.builtin.command:
+    cmd: service apache2 start
+  register: apache_status
+  ignore_errors: yes
+  become: yes
+  tags: debug_apache
+
+- name: Verificar status do serviço apache2
+  ansible.builtin.command:
+    cmd: service apache2 status
+  register: apache_status
+  ignore_errors: yes
+  become: yes
+  tags: debug_apache
+  
+- name: Mostrar status do serviço apache2
+  ansible.builtin.debug:
+    var: apache_status
+  become: yes
+  tags: debug_apache
+
+- name: Change file ownership, group and permissions
+  ansible.builtin.file:
+    path: /var/www/html
+    owner: root
+    group: www-data
+    mode: '0664'
+    recurse: true
+
+- name: Unarchive wordpress
+  ansible.builtin.unarchive:
+    src: https://wordpress.org/latest.tar.gz
+    dest: /var/www/html/
+    remote_src: yes
+    owner: root
+    group: www-data
+    extra_opts: [--strip-components=1]
+
+- name: Update Config
+  template:
+    src: wp-config.php.j2
+    dest: /var/www/html/wp-config.php
+
+- name: Change file ownership, group and permissions
+  ansible.builtin.file:
+    path: /var/www/html
+    owner: www-data
+    group: www-data
+    mode: u=rwX,g=rwX,o=rX
+    recurse: true
+    state: directory
+
+- name: Remove old index
+  ansible.builtin.file:
+    path: /var/www/html/index.html
+    state: absent
+
+# Config apache
+
+- name: Enable .htaccess files in Apache config
+  ansible.builtin.replace:
+    path: /etc/apache2/apache2.conf
+    after: '<Directory /var/www/>'
+    before: '</Directory>'
+    regexp: 'AllowOverride None'
+    replace: |
+      AllowOverride All
+      RequestHeader set X-Forwarded-Proto "https"
+      RequestHeader set X-Forwarded-Port "443"
+  notify:
+    - restart apache2
+
+ # Replacing Default Port
+
+- name: Enables port 3000
+  ansible.builtin.replace:
+    path: /etc/apache2/ports.conf
+    regexp: 'Listen 80'
+    replace: Listen 3000
+  notify:
+    - restart apache2
