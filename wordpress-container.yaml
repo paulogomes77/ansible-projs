@@ -1,4 +1,5 @@
-- hosts: all
+- name: Wordpress-to-a-container
+  hosts: all
 #  vars_files:
 #    - roles/wordpress-container/vars/main.yml
   become: yes
